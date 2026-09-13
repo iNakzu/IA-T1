@@ -461,10 +461,14 @@ print(f"Exactitud (Accuracy) Modelo Continuo: {acc_cont:.2%}")
 print(f"Exactitud (Accuracy) Modelo Diario:   {acc_dia:.2%}")
 
 """
-Interpretación y Comparación de Ambos Modelos HMM:
-1. Efecto de las transiciones entre días: El modelo continuo incluye la transición de las 23:50 a las 00:00 del día siguiente, lo que refuerza los estados de reposo nocturno. El modelo diario aísla cada jornada de 24 horas. Sobre el día evaluado, ambos modelos obtuvieron verosimilitudes casi idénticas (-374.47 vs -374.71), indicando que la dinámica intradiaria domina el proceso.
-2. Significado de las distribuciones iniciales: pi_cont representa el equilibrio a largo plazo (ergódico) de la vivienda (con pesos homogéneos entre 13% y 22%), mientras que pi_dia captura la condición de reposo a las 00:00 hrs (más del 88% en consumos bajos).
-3. Diferencias entre Forward-Backward y Viterbi: Forward-Backward estima las probabilidades marginales en cada instante puntual gamma_t(i), mientras que Viterbi obtiene la trayectoria completa conjunta más probable mediante programación dinámica, asegurando coherencia temporal bajo las probabilidades de transición.
+Conclusiones y Discusión de los Modelos HMM:
+Al comparar los resultados de ambos modelos notamos que dieron prácticamente la misma verosimilitud (-376.29 en el continuo y -376.48 en el diario). Esto nos indica que lo que ocurre a lo largo del día tiene mucho más peso en el modelo que el cambio entre las 23:50 y las 00:00 del día siguiente.
+
+Donde sí se nota una diferencia clara es en las probabilidades iniciales: la distribución estacionaria del modelo continuo representa un promedio general de varios meses, mientras que la distribución diaria a las 00:00 muestra la rutina real de la casa, donde casi el 90% de las veces arranca en consumos bajos porque la gente está durmiendo.
+
+Respecto a la inferencia, Forward-Backward nos entrega las probabilidades en cada hora por separado, pero si escogiéramos el valor más alto en cada momento podríamos terminar con saltos raros entre estados. Viterbi soluciona esto buscando la secuencia completa más lógica para todo el día.
+
+Finalmente, la exactitud que obtuvimos fue cercana al 21.5%. Esto tiene sentido porque la casa tiene inercia térmica: cuando se enciende un electrodoméstico el consumo sube de inmediato, pero la temperatura y la humedad demoran en cambiar. Por eso, predecir el consumo exacto usando solo sensores del ambiente es una tarea difícil y con retardo.
 """
 
 """
@@ -582,17 +586,9 @@ print("\nGrafico guardado en p3_cobertura.png")
 """
 Análisis de resultados y convergencia de Monte Carlo:
 
-1. Comparación de los 4 escenarios (10k, 100k, 1M y 10M puntos):
-- Con 10.000 puntos obtuvimos un área útil de 797.00 km2 con un error estándar de +-27.08 km2 (error relativo del 2.23% respecto a la referencia de 10M). Con pocas muestras la dispersión muestral es aún notoria.
-- Con 100.000 puntos el área estimada asciende a 824.40 km2 y el error estándar se reduce a +-8.70 km2 (1.14% de error relativo).
-- Con 1.000.000 de puntos la estimación se estabiliza fuertemente en 814.85 km2, con un error estándar de tan solo +-2.74 km2 (0.036% de error relativo).
-- Con 10.000.000 de puntos la solución converge a 815.15 km2 con un error estándar de +-0.87 km2. La diferencia entre 1 millón y 10 millones es de apenas 0.30 km2, confirmando una alta estabilidad numérica.
+Al revisar los 4 escenarios vemos cómo la estimación del área se va estabilizando a medida que aumentamos los puntos. Con 10.000 puntos el área nos dio 797.00 km2 con un margen de error de +-27 km2, mientras que con 100.000 subió a 824.40 km2 con error de +-8.7 km2. Ya a partir de 1 millón de puntos el valor se afirma en 814.85 km2, y con 10 millones prácticamente no cambia (815.15 km2 con menos de 1 km2 de error). La diferencia entre 1 millón y 10 millones es de solo 0.3 km2, lo que confirma que el resultado ya es muy estable.
 
-2. Discusión sobre el comportamiento y la convergencia del método:
-- Por la Ley Fuerte de los Grandes Números, a medida que aumentamos la cantidad de puntos simulados, la proporción muestral converge casi seguramente a la probabilidad teórica real del área.
-- Por el Teorema del Límite Central, el error estándar disminuye con una tasa de orden O(1/sqrt(N)). Dado que entre cada escenario multiplicamos la cantidad de muestras por 10, el error teórico debe reducirse por un factor de 1/sqrt(10) ≈ 0.3162.
-- Al revisar la columna de 'Razón EE' en nuestra tabla, obtuvimos valores empíricos de 0.321, 0.315 y 0.316, los cuales coinciden de manera muy precisa con el valor teórico de 0.316. Esto demuestra empíricamente que para ganar un decimal más de precisión con Monte Carlo es necesario multiplicar por 100 la cantidad de muestras simuladas.
+Esto se explica por la Ley de los Grandes Números y por cómo funciona Monte Carlo: el error disminuye con la raíz de la cantidad de puntos (1 / sqrt(N)). Como en cada paso multiplicamos las muestras por 10, el error debería bajar dividiéndose por sqrt(10), que es aproximadamente 0.316. En nuestra tabla calculamos la razón entre errores consecutivos y obtuvimos 0.321, 0.315 y 0.316, lo que coincide casi exacto con la teoría. Esto demuestra que para ganar un decimal más de precisión hay que simular 100 veces más puntos.
 
-3. Interpretación espacial del gráfico (p3_cobertura.png):
-Al visualizar los puntos, se aprecia claramente que debido a los dígitos del RUT las tres antenas quedaron concentradas hacia el vértice inferior izquierdo del terreno. La zona naranja central muestra la región de solapamiento de las 3 antenas (unos 711 km2), donde se pierde el servicio por interferencia destructiva. A su alrededor se extiende la franja verde de servicio útil (unos 815 km2), mientras que la gran mayoría del terreno (más del 84%, en color azul) queda completamente sin cobertura de señal.
+Por último, en el gráfico de cobertura se aprecia que las tres antenas quedaron concentradas en la esquina inferior izquierda del mapa debido a los números del RUT. La zona naranja del centro muestra el área donde se cruzan las tres señales (unos 711 km2), donde se produce interferencia y se pierde la señal. Alrededor de ella queda la franja verde con servicio útil de 1 o 2 antenas (unos 815 km2), mientras que más del 84% del terreno (en azul) queda totalmente sin señal, por lo que la empresa tendría que instalar más antenas hacia el noreste.
 """
